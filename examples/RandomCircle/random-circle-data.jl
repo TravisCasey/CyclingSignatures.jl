@@ -10,11 +10,12 @@ function rc_data_gen(;
     Δr = 0.0,
     Δθ = 0.1,
     r_sd = 0.0,
-    θ_sd = 0.0
+    θ_sd = 0.0,
+    resamp = 4
 )
     # Deterministic Generation
     if Δr == 0
-        rd_vec = fill(r₀, n+1)
+        rd_vec = fill(r0, n+1)
     else
         rd_vec = Vector(r0:Δr:r0+n*Δr)
     end
@@ -33,23 +34,18 @@ function rc_data_gen(;
     y_vec = rp_vec .* sin.(θp_vec)
     space_vec = [x_vec y_vec]
 
+    # Add intermediate points for dynamical consistency
+    resamp_space_vec = Matrix{Float64}(undef, 0, 2)
+    resamp_space_vec = [resamp_space_vec; space_vec[1,:]']
+    for row in axes(space_vec, 1)[2:end]
+        diff = space_vec[row,:] - space_vec[row-1,:]
+        step = diff / resamp
+        for i in 1:resamp
+            resamp_space_vec = [resamp_space_vec; (space_vec[row-1,:] + i * step)']
+        end
+    end
+
     # Calculate Normalized Differences
-    vf_vec = mapslices(normalize, space_vec[2:end,:]-space_vec[1:end-1,:], dims=2)
-    return [space_vec[1:end-1,:] vf_vec]
+    vf_vec = mapslices(normalize, resamp_space_vec[2:end,:]-resamp_space_vec[1:end-1,:], dims=2)
+    return hcat(resamp_space_vec[1:end-1,:], vf_vec)
 end
-
-# Parameters
-
-n = 10000
-r₀ = 1.0
-θ₀ = 0.0
-Δr = 0.0
-Δθ = 0.1
-σr = 0.2
-σθ = 0.0
-
-jldsave("examples/RandomCircle/random-circle-timeseries.jld2",
-        space_data=space_vec[1:end-1,:],
-        veloc_data=veloc_vec)
-
-scatter(space_vec[1:end-1,:])
