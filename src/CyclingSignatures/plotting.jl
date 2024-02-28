@@ -11,7 +11,11 @@ end
 
 function getRankColors(k=6)
     slightBend(x,p) = x -p*x*(x-1)
-    rpColors = ColorSchemes.magma[slightBend.(LinRange(0,1,k),.75)]
+    if k != 1
+        rpColors = ColorSchemes.magma[slightBend.(LinRange(0,1,k),.75)]
+    else
+        rpColors = ColorSchemes.magma[slightBend.(LinRange(0,0,1),.75)]
+    end
     return RGBA.(rpColors,1.0)
 end
 
@@ -49,11 +53,11 @@ function plotRanksWithLegend(results::Vector, r;gl = nothing, colors = nothing, 
     plotRanks(results, r; gp=gl[1,1], colors=colors, kwargs...)
 
     def_legend_kwa = (; orientation = :vertical, framevisible = true, titleposition=:left, nbanks=3,patchsize=(10,10), padding=(8f0,8f0,6f0,6f0),tellwidth=false,tellheight=true)
-    
+
 
     elements = [PolyElement(polycolor = c) for c in colors[1:nRanks]]
     labels = string.(0:nRanks-1)
-    Makie.Legend(gl[2,1], elements, labels, "rank"; merge(def_legend_kwa, legend_kwargs)...)    
+    Makie.Legend(gl[2,1], elements, labels, "rank"; merge(def_legend_kwa, legend_kwargs)...)
 
     return gl.parent
 end
