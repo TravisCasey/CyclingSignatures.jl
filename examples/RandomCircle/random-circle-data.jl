@@ -1,7 +1,7 @@
 using JLD2
 using LinearAlgebra
 using GLMakie
-
+using Printf
 
 function rc_data_gen(;
     n = 10000,
@@ -11,7 +11,7 @@ function rc_data_gen(;
     Δθ = 0.1,
     r_sd = 0.0,
     θ_sd = 0.0,
-    resamp = 4
+    resamp_radius = 0.04
 )
     # Deterministic Generation
     if Δr == 0
@@ -37,15 +37,21 @@ function rc_data_gen(;
     # Add intermediate points for dynamical consistency
     resamp_space_vec = Matrix{Float64}(undef, 0, 2)
     resamp_space_vec = [resamp_space_vec; space_vec[1,:]']
+    t_vec = [1]
     for row in axes(space_vec, 1)[2:end]
         diff = space_vec[row,:] - space_vec[row-1,:]
-        step = diff / resamp
-        for i in 1:resamp
+        N = ceil(norm(diff)/resamp_radius) # Insert N - 1 intermediate points
+        step = diff / N
+        for i in 1:N
             resamp_space_vec = [resamp_space_vec; (space_vec[row-1,:] + i * step)']
         end
+        push!(t_vec, t_vec[end] + N)
     end
+    push!(t_vec, t_vec[end] + 1) # Not sure why this is needed but it is
+    @printf("Inserted %d points", size(resamp_space_vec, 1) - size(space_vec, 1))
 
     # Calculate Normalized Differences
     vf_vec = mapslices(normalize, resamp_space_vec[2:end,:]-resamp_space_vec[1:end-1,:], dims=2)
-    return hcat(resamp_space_vec[1:end-1,:], vf_vec)
+    vf_vec = [vf_vec; vf_vec[end,:]'] # Fixes t_vec issues when removing last point
+    return hcat(resamp_space_vec, vf_vec), t_vec
 end
